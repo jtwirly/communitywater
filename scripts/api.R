@@ -159,6 +159,18 @@ create_map <- function() {
   return(map)
 }
 
+# Function to set CORS headers
+handleCORS <- function(req, res) {
+  res$setHeader('Access-Control-Allow-Origin', '*')
+  plumber::forward()
+}
+
+# Register the middleware
+pr <- plumber::pr()
+pr$registerHooks(list(
+  'plumber.middleware' = handleCORS
+))
+
 #* @apiTitle Water Quality Monitoring API
 
 #* Endpoint for water quality data
