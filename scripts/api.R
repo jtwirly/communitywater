@@ -1,4 +1,15 @@
 library(plumber)
+# load packages
+library(tidyverse)
+
+# spatial packages
+library(sf)
+library(httr)
+library(xml2)
+
+library(leaflet)
+library(dplyr)
+library(htmlwidgets) 
 
 # Function to fetch and process water quality data
 fetch_water_quality_data <- function(state_code, characteristic_name) {
@@ -31,7 +42,6 @@ fetch_water_quality_data <- function(state_code, characteristic_name) {
 } else {
   cat(paste("Error:", status_code(response)), "\n")
 }
-
 
 # bring in the station data 
 # may need to modify the path based on your working directory
@@ -129,6 +139,26 @@ ggplot() +
 
 ggsave("colorado_ammonia_max.png", units = "in", width = 6, height = 6)
 
+# Function to create a leaflet map
+create_map <- function() {
+  # Assuming water_quality_wloc_df is globally accessible
+  map <- leaflet(water_quality_wloc_df) %>%
+    addTiles() %>%
+    setView(lng = -105.7821, lat = 39.5501, zoom = 7)
+
+  if(nrow(water_quality_wloc_df) > 0) {
+    for (i in 1:nrow(water_quality_wloc_df)) {
+      map <- map %>% addMarkers(
+        lng = water_quality_wloc_df$LongitudeMeasure[i], 
+        lat = water_quality_wloc_df$LatitudeMeasure[i],
+        popup = paste("Ammonia Level:", water_quality_wloc_df$ResultMeasureValue[i])
+      )
+    }
+  }
+
+  return(map)
+}
+
 #* @apiTitle Water Quality Monitoring API
 
 #* Endpoint for water quality data
@@ -143,5 +173,14 @@ function() {
   read_station_data()
 }
 
+# Endpoint to serve the leaflet map
+#* @get /map
+function(res) {
+  map <- create_map()
+  htmlwidgets::saveWidget(map, "map.html", selfcontained = TRUE)
+  plumber::forward("map.html")
+}
+
 # Plumber router setup
-# plumber::pr() %>% pr_run(port=8000)
+pr <- plumber::pr()
+pr$run(port=8000)
